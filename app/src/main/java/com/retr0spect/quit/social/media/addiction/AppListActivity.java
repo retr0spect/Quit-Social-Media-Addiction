@@ -1,6 +1,7 @@
 package com.retr0spect.quit.social.media.addiction;
 
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -15,20 +16,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AppListActivity extends AppCompatActivity {
+    int flags = PackageManager.GET_META_DATA |
+            PackageManager.GET_SHARED_LIBRARY_FILES |
+            PackageManager.GET_UNINSTALLED_PACKAGES;
     private RecyclerView mRecyclerView;
     private RecyclerView.Adapter mAdapter;
     private RecyclerView.LayoutManager mLayoutManager;
-
-    private List<AppMetadata> appMetadataList;
+    private ArrayList<AppMetadata> apps;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_app_list);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        toolbar.setTitle("Select Apps");
         setSupportActionBar(toolbar);
 
-        InitializeData();
+        apps = loadApps();
 
         mRecyclerView = (RecyclerView) findViewById(R.id.app_list_recycler_view);
         mRecyclerView.setHasFixedSize(true);
@@ -36,12 +40,8 @@ public class AppListActivity extends AppCompatActivity {
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
 
-        mAdapter = new AppListAdapter(appMetadataList);
+        mAdapter = new AppListAdapter(apps);
         mRecyclerView.setAdapter(mAdapter);
-
-        /*PackageManager pm = getPackageManager();
-        List<ApplicationInfo> packages = pm.getInstalledApplications(PackageManager.GET_META_DATA);
-        System.out.println("");*/
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -53,13 +53,22 @@ public class AppListActivity extends AppCompatActivity {
         });
     }
 
-    private void InitializeData() {
-        appMetadataList = new ArrayList<>();
-        appMetadataList.add(new AppMetadata("App 1"));
-        appMetadataList.add(new AppMetadata("App 2"));
-        appMetadataList.add(new AppMetadata("App 3"));
-        appMetadataList.add(new AppMetadata("App 4"));
-
+    private ArrayList<AppMetadata> loadApps() {
+        List<PackageInfo> apps = getPackageManager().getInstalledPackages(flags);
+        ArrayList<AppMetadata> appMetas = new ArrayList<>();
+        for (int i = 0; i < apps.size(); i++) {
+            PackageInfo p = apps.get(i);
+            if ((p.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0) {
+                AppMetadata appMetadata = new AppMetadata(
+                        p.applicationInfo.loadLabel(getPackageManager()).toString(),
+                        p.packageName,
+                        p.applicationInfo.loadIcon(getPackageManager())
+                );
+                appMetas.add(appMetadata);
+            }
+        }
+        return appMetas;
     }
+
 
 }

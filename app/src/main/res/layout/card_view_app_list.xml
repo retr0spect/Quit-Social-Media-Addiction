@@ -14,34 +14,34 @@
         android:background="?android:selectableItemBackground">
 
         <android.support.v7.widget.AppCompatImageView
+            android:id="@+id/app_list_image_view"
             android:layout_width="45sp"
             android:layout_height="45sp"
-            android:src="@drawable/test_icon"
-            android:layout_alignParentTop="true"
             android:layout_alignParentLeft="true"
             android:layout_alignParentStart="true"
-            android:id="@+id/appCompatImageView"
-            android:layout_margin="4sp"/>
+            android:layout_alignParentTop="true"
+            android:layout_margin="4sp"
+            android:src="@drawable/test_icon" />
 
         <TextView
             android:id="@+id/app_name_text_view"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
             android:layout_margin="4sp"
+            android:layout_toRightOf="@+id/app_list_image_view"
             android:gravity="center"
             android:textColor="@android:color/black"
-            android:textSize="16sp"
-            android:layout_centerVertical="true"
-            android:layout_toRightOf="@+id/appCompatImageView" />
+            android:textSize="16sp" />
 
         <android.support.v7.widget.AppCompatCheckBox
+            android:id="@+id/app_list_checkbox"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="5sp"
-            android:id="@+id/appCompatCheckBox"
-            android:layout_centerVertical="true"
+            android:layout_alignParentEnd="true"
             android:layout_alignParentRight="true"
-            android:layout_alignParentEnd="true" />
+            android:layout_centerVertical="true"
+            android:layout_margin="5sp" />
 
 
     </RelativeLayout>
