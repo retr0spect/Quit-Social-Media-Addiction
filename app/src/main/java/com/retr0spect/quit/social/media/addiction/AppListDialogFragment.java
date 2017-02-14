@@ -1,5 +1,6 @@
 package com.retr0spect.quit.social.media.addiction;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.DialogFragment;
@@ -25,9 +26,19 @@ public class AppListDialogFragment extends DialogFragment {
     int flags = PackageManager.GET_META_DATA |
             PackageManager.GET_SHARED_LIBRARY_FILES |
             PackageManager.GET_UNINSTALLED_PACKAGES;
-
     RecyclerView recyclerView;
     AppListAdapter adapter;
+    private OnCompleteListener mListener;
+
+    @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+        try {
+            mListener = (OnCompleteListener) activity;
+        } catch (final ClassCastException e) {
+            throw new ClassCastException(activity.toString() + " must implement OnCompleteListener");
+        }
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -49,7 +60,7 @@ public class AppListDialogFragment extends DialogFragment {
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                // on success
+                mListener.onComplete(adapter.checkedApps);
             }
         });
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -76,5 +87,9 @@ public class AppListDialogFragment extends DialogFragment {
             }
         }
         return appMetas;
+    }
+
+    public interface OnCompleteListener {
+        void onComplete(List<AppMetadata> apps);
     }
 }
