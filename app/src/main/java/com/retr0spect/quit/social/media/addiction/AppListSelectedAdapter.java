@@ -19,9 +19,12 @@ public class AppListSelectedAdapter extends RecyclerView.Adapter<AppListSelected
 
     public List<AppMetadata> checkedApps;
     private List<AppMetadata> apps;
+    private DataTransferInterface dtInterface;
 
-    AppListSelectedAdapter(List<AppMetadata> apps) {
+
+    AppListSelectedAdapter(List<AppMetadata> apps, DataTransferInterface dtInterface) {
         this.apps = apps;
+        this.dtInterface = dtInterface;
     }
 
     @Override
@@ -38,7 +41,8 @@ public class AppListSelectedAdapter extends RecyclerView.Adapter<AppListSelected
         holder.btnDelete.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                apps.remove(position);
+                dtInterface.setValues((ArrayList<AppMetadata>) apps);
             }
         });
     }
@@ -60,4 +64,7 @@ public class AppListSelectedAdapter extends RecyclerView.Adapter<AppListSelected
             btnDelete = (Button) itemView.findViewById(R.id.select_app_list_delete_button);
         }
     }
+
 }
+
+

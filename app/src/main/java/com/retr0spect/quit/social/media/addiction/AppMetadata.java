@@ -18,6 +18,21 @@ public class AppMetadata {
         this.icon = icon;
     }
 
+    @Override
+    public int hashCode() {
+        return this.appName == null ? 0 : this.appName.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null)
+            return false;
+        if (!(obj instanceof AppMetadata))
+            return false;
+        AppMetadata am = (AppMetadata) obj;
+        return this.appName != null && this.appName.equals(am.appName);
+    }
+
     public String getAppName() {
         return appName;
     }

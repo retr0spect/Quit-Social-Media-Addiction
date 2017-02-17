@@ -1,34 +1,120 @@
 package com.retr0spect.quit.social.media.addiction;
 
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.Toast;
+
+import com.google.gson.Gson;
+
+import java.util.ArrayList;
+
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
+    SharedPreferences sharedPrefs;
+    RecyclerView mRecyclerView;
+    ProfileListAdapter adapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+//        setContentView(R.layout.activity_main);
+
+
+        sharedPrefs = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
+        Gson gson = new Gson();
+        String json = sharedPrefs.getString("1", null);
+        ProfileContents pc = gson.fromJson(json, ProfileContents.class);
+        ArrayList<ProfileContents> pcs = new ArrayList<>();
+        pcs.add(pc);
+
+        ArrayList<ProfileContentsFull> pcf = new ArrayList<>();
+        for (ProfileContents p : pcs) {
+            ArrayList<String> pNames = p.getPackageNames();
+            ArrayList<ApplicationInfo> appInfos = new ArrayList<>();
+            for (String pName : pNames) {
+                try {
+                    appInfos.add(this.getPackageManager().getApplicationInfo(pName, 0));
+                } catch (PackageManager.NameNotFoundException e) {
+                    Toast toast = Toast.makeText(this, "error in getting icon", Toast.LENGTH_SHORT);
+                    toast.show();
+                    e.printStackTrace();
+                }
+            }
+            pcf.add(new ProfileContentsFull(p.profileName, appInfos, p.getDays(), p.isActive));
+            pcf.add(new ProfileContentsFull(p.profileName, appInfos, p.getDays(), p.isActive));
+            pcf.add(new ProfileContentsFull(p.profileName, appInfos, p.getDays(), p.isActive));
+            pcf.add(new ProfileContentsFull(p.profileName, appInfos, p.getDays(), p.isActive));
+            pcf.add(new ProfileContentsFull(p.profileName, appInfos, p.getDays(), p.isActive));
+            pcf.add(new ProfileContentsFull(p.profileName, appInfos, p.getDays(), p.isActive));
+        }
+
+
+        LayoutInflater inflater = LayoutInflater.from(this);
+        View rootView = inflater.inflate(R.layout.activity_main, null);
+        mRecyclerView = (RecyclerView) rootView.findViewById(R.id.main_page_recycler_view);
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        setContentView(rootView);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+
+        adapter = new ProfileListAdapter(pcf);
+        mRecyclerView.setAdapter(adapter);
+
+
+        /*Type type = new TypeToken<ArrayList<ProfileContents>>(){}.getType();
+        ArrayList<ProfileContents> arrayList = gson.fromJson(json, type);*/
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this, CreateProfileActivity.class));
+                AlertDialog.Builder alert = new AlertDialog.Builder(MainActivity.this);
+                alert.setTitle("Create Profile");
+                final EditText input = new EditText(MainActivity.this);
+                alert.setView(input);
+                alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Intent intent = new Intent(MainActivity.this, CreateProfileActivity.class);
+                        String profileName = input.getText().toString().trim();
+                        if (profileName.equals("")) {
+                            Toast.makeText(MainActivity.this, "Profile Name cannot be empty", Toast.LENGTH_SHORT).show();
+                        } else {
+                            intent.putExtra("ProfileName", profileName);
+                            startActivity(intent);
+                        }
+                    }
+                });
+                alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+
+                    }
+                });
+                alert.show();
             }
         });
 
@@ -40,6 +126,8 @@ public class MainActivity extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+
+
     }
 
     @Override
