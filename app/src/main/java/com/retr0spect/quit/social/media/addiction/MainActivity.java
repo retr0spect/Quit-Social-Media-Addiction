@@ -25,13 +25,17 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
+    boolean firatRun;
     SharedPreferences sharedPrefs;
     RecyclerView mRecyclerView;
     ProfileListAdapter adapter;
@@ -39,37 +43,43 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-//        setContentView(R.layout.activity_main);
-
 
         sharedPrefs = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
-        Gson gson = new Gson();
-        String json = sharedPrefs.getString("1", null);
-        ProfileContents pc = gson.fromJson(json, ProfileContents.class);
-        ArrayList<ProfileContents> pcs = new ArrayList<>();
-        pcs.add(pc);
-
-        ArrayList<ProfileContentsFull> pcf = new ArrayList<>();
-        for (ProfileContents p : pcs) {
-            ArrayList<String> pNames = p.getPackageNames();
-            ArrayList<ApplicationInfo> appInfos = new ArrayList<>();
-            for (String pName : pNames) {
-                try {
-                    appInfos.add(this.getPackageManager().getApplicationInfo(pName, 0));
-                } catch (PackageManager.NameNotFoundException e) {
-                    Toast toast = Toast.makeText(this, "error in getting icon", Toast.LENGTH_SHORT);
-                    toast.show();
-                    e.printStackTrace();
-                }
-            }
-            pcf.add(new ProfileContentsFull(p.profileName, appInfos, p.getDays(), p.isActive));
-            pcf.add(new ProfileContentsFull(p.profileName, appInfos, p.getDays(), p.isActive));
-            pcf.add(new ProfileContentsFull(p.profileName, appInfos, p.getDays(), p.isActive));
-            pcf.add(new ProfileContentsFull(p.profileName, appInfos, p.getDays(), p.isActive));
-            pcf.add(new ProfileContentsFull(p.profileName, appInfos, p.getDays(), p.isActive));
-            pcf.add(new ProfileContentsFull(p.profileName, appInfos, p.getDays(), p.isActive));
+        String firstRun = sharedPrefs.getString("first_run", null);
+        SharedPreferences.Editor prefsEditor = sharedPrefs.edit();
+        if (firstRun == null) {
+            prefsEditor.putString("first_run", "true");
+            prefsEditor.apply();
+            firstRun();
+        } else if (firstRun.equals("true")) {
+            prefsEditor.putString("first_run", "false");
+            prefsEditor.apply();
+            firstRun();
         }
 
+        Gson gson = new Gson();
+        String json = sharedPrefs.getString("profiles", null);
+        Type type = new TypeToken<ArrayList<ProfileContents>>() {
+        }.getType();
+        ArrayList<ProfileContents> pcs = gson.fromJson(json, type);
+
+        ArrayList<ProfileContentsFull> pcf = new ArrayList<>();
+        if (pcs != null) {
+            for (ProfileContents p : pcs) {
+                ArrayList<String> pNames = p.getPackageNames();
+                ArrayList<ApplicationInfo> appInfos = new ArrayList<>();
+                for (String pName : pNames) {
+                    try {
+                        appInfos.add(this.getPackageManager().getApplicationInfo(pName, 0));
+                    } catch (PackageManager.NameNotFoundException e) {
+                        Toast toast = Toast.makeText(this, "error in getting icon", Toast.LENGTH_SHORT);
+                        toast.show();
+                        e.printStackTrace();
+                    }
+                }
+                pcf.add(new ProfileContentsFull(p.getProfileName(), appInfos, p.getDays(), p.isActive()));
+            }
+        }
 
         LayoutInflater inflater = LayoutInflater.from(this);
         View rootView = inflater.inflate(R.layout.activity_main, null);
@@ -79,13 +89,8 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-
         adapter = new ProfileListAdapter(pcf);
         mRecyclerView.setAdapter(adapter);
-
-
-        /*Type type = new TypeToken<ArrayList<ProfileContents>>(){}.getType();
-        ArrayList<ProfileContents> arrayList = gson.fromJson(json, type);*/
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -126,9 +131,49 @@ public class MainActivity extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
-
-
     }
+
+
+    private void firstRun() {
+        String[] weekendPackages = new String[]{
+                "com.google.android.gm",
+                "com.google.android.apps.docs"
+        };
+        String[] socialMediaPackages = new String[]{
+                "com.facebook.katana",
+                "ccom.instagram.android"
+        };
+
+        ArrayList<String> weekendPackagesExist = new ArrayList<>();
+        for (String pack : weekendPackages) {
+            if (doesPackageExist(pack)) {
+                weekendPackagesExist.add(pack);
+            }
+        }
+
+        ArrayList<String> socialMediaPackagesExist = new ArrayList<>();
+        for (String pack : socialMediaPackages) {
+            if (doesPackageExist(pack)) {
+                socialMediaPackagesExist.add(pack);
+            }
+        }
+
+        ArrayList<ProfileContents> pcs = new ArrayList<>();
+
+        if (weekendPackagesExist.size() > 0) {
+            pcs.add(new ProfileContents("Weekend", weekendPackagesExist));
+        }
+        if (socialMediaPackagesExist.size() > 0) {
+            pcs.add(new ProfileContents("Social Media", socialMediaPackagesExist));
+        }
+
+        SharedPreferences.Editor prefsEditor = sharedPrefs.edit();
+        Gson gson = new Gson();
+        String json = gson.toJson(pcs);
+        prefsEditor.putString("profiles", json);
+        prefsEditor.apply();
+    }
+
 
     @Override
     public void onBackPressed() {
@@ -185,6 +230,18 @@ public class MainActivity extends AppCompatActivity
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    public boolean doesPackageExist(String targetPackage) {
+        List<ApplicationInfo> packages;
+        PackageManager pm;
+        pm = getPackageManager();
+        packages = pm.getInstalledApplications(0);
+        for (ApplicationInfo packageInfo : packages) {
+            if (packageInfo.packageName.equals(targetPackage))
+                return true;
+        }
+        return false;
     }
 
 }

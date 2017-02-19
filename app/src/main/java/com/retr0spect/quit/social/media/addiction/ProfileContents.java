@@ -13,6 +13,14 @@ public class ProfileContents {
     ArrayList<String> days;
     boolean isActive;
 
+    public ProfileContents() {
+    }
+
+    public ProfileContents(String profileName, ArrayList<String> packageNames) {
+        this.profileName = profileName;
+        this.packageNames = packageNames;
+    }
+
     public String getProfileName() {
         return profileName;
     }

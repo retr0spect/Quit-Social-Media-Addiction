@@ -1,6 +1,7 @@
 package com.retr0spect.quit.social.media.addiction;
 
 import android.app.FragmentManager;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -12,7 +13,9 @@ import android.view.View;
 import android.widget.Button;
 
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,11 +67,20 @@ public class CreateProfileActivity extends AppCompatActivity implements AppListD
                 pc.setPackageNames(packageNames);
                 pc.setProfileName(profileName);
 
-                SharedPreferences.Editor prefsEditor = mPrefs.edit();
                 Gson gson = new Gson();
-                String json = gson.toJson(pc);
-                prefsEditor.putString("1", json);
+                String json = mPrefs.getString("profiles", null);
+                Type type = new TypeToken<ArrayList<ProfileContents>>() {
+                }.getType();
+                ArrayList<ProfileContents> pcs = gson.fromJson(json, type);
+                pcs.add(pc);
+                json = gson.toJson(pcs);
+                SharedPreferences.Editor prefsEditor = mPrefs.edit();
+                prefsEditor.putString("profiles", json);
                 prefsEditor.apply();
+
+                Intent intent = new Intent(CreateProfileActivity.this, MainActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(intent);
             }
         });
     }

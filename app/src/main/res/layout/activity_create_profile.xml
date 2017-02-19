@@ -113,8 +113,17 @@
     <android.support.v7.widget.RecyclerView
         android:id="@+id/selected_apps"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:scrollbars="vertical" />
+
+
+    <Button
+        android:id="@+id/save_Profile"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:layout_width="57dp"
+        android:layout_height="35dp"
+        android:text="Save"
+        android:textSize="12sp" />
 
 
 </LinearLayout>
