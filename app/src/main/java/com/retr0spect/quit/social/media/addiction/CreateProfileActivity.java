@@ -1,8 +1,8 @@
 package com.retr0spect.quit.social.media.addiction;
 
 import android.app.FragmentManager;
-import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
@@ -12,10 +12,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,13 +23,12 @@ public class CreateProfileActivity extends AppCompatActivity implements AppListD
     List<AppMetadata> selectedApps;
 
     SharedPreferences mPrefs;
+    String profileName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setTitle("Create Profile");
-
-        final String profileName = getIntent().getExtras().getString("ProfileName");
         mPrefs = PreferenceManager.getDefaultSharedPreferences(CreateProfileActivity.this);
 
         LayoutInflater inflater = LayoutInflater.from(this);
@@ -42,6 +37,14 @@ public class CreateProfileActivity extends AppCompatActivity implements AppListD
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         setContentView(rootView);
+
+        profileName = getIntent().getExtras().getString("ProfileName");
+        final String fromCard = getIntent().getExtras().getString("FromCard", "false");
+        if (fromCard.equals("true")) {
+            selectedApps = populateSelectedAppsForAProfile(profileName, Utils.getProfilesFromSharedPrefs(mPrefs));
+            adapter = new AppListSelectedAdapter(selectedApps, this);
+            recyclerView.setAdapter(adapter);
+        }
 
         final FragmentManager fragmentManager = getFragmentManager();
         final AppListDialogFragment fragment = new AppListDialogFragment();
@@ -54,36 +57,29 @@ public class CreateProfileActivity extends AppCompatActivity implements AppListD
             }
         });
 
-        btnSave = (Button) findViewById(R.id.save_Profile);
-        btnSave.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                ArrayList<String> packageNames = new ArrayList<>();
-                for (AppMetadata am : selectedApps) {
-                    packageNames.add(am.getPackageName());
-                }
-
-                ProfileContents pc = new ProfileContents();
-                pc.setPackageNames(packageNames);
-                pc.setProfileName(profileName);
-
-                Gson gson = new Gson();
-                String json = mPrefs.getString("profiles", null);
-                Type type = new TypeToken<ArrayList<ProfileContents>>() {
-                }.getType();
-                ArrayList<ProfileContents> pcs = gson.fromJson(json, type);
-                pcs.add(pc);
-                json = gson.toJson(pcs);
-                SharedPreferences.Editor prefsEditor = mPrefs.edit();
-                prefsEditor.putString("profiles", json);
-                prefsEditor.apply();
-
-                Intent intent = new Intent(CreateProfileActivity.this, MainActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                startActivity(intent);
-            }
-        });
     }
+
+    private List<AppMetadata> populateSelectedAppsForAProfile(String profileName, ArrayList<ProfileContents> pcs) {
+        ArrayList<AppMetadata> sa = new ArrayList<>();
+        for (ProfileContents p : pcs) {
+            if (p.getProfileName().equals(profileName)) {
+                for (String pName : p.getPackageNames()) {
+                    try {
+                        AppMetadata amd = new AppMetadata(
+                                (String) getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pName, PackageManager.GET_META_DATA)),
+                                pName,
+                                getPackageManager().getApplicationIcon(pName)
+                        );
+                        sa.add(amd);
+                    } catch (PackageManager.NameNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        return sa;
+    }
+
 
     @Override
     public void onComplete(List<AppMetadata> apps) {
@@ -97,12 +93,36 @@ public class CreateProfileActivity extends AppCompatActivity implements AppListD
         }
         adapter = new AppListSelectedAdapter(selectedApps, this);
         recyclerView.setAdapter(adapter);
+        saveUpdatedProfileContents(selectedApps, mPrefs, profileName);
     }
+
 
     @Override
     public void setValues(ArrayList<?> al) {
         selectedApps = (List<AppMetadata>) al;
         adapter = new AppListSelectedAdapter(selectedApps, this);
         recyclerView.setAdapter(adapter);
+        saveUpdatedProfileContents(selectedApps, mPrefs, profileName);
+    }
+
+    private void saveUpdatedProfileContents(List<AppMetadata> selectedApps, SharedPreferences mPrefs, String profileName) {
+        ArrayList<String> packageNames = new ArrayList<>();
+        for (AppMetadata am : selectedApps) {
+            packageNames.add(am.getPackageName());
+        }
+        ProfileContents pc = new ProfileContents(profileName, packageNames);
+        ArrayList<ProfileContents> pcs = Utils.getProfilesFromSharedPrefs(mPrefs);
+        if (pcs != null) {
+            for (ProfileContents p : pcs) {
+                if (p.getProfileName().equals(pc.getProfileName())) {
+                    pcs.remove(p);
+                    break;
+                }
+            }
+        }
+        if (pcs != null) {
+            pcs.add(pc);
+        }
+        Utils.saveProfilesToSharedPrefs(pcs, mPrefs);
     }
 }

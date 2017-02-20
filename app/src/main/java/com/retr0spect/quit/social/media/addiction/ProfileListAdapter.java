@@ -1,10 +1,11 @@
 package com.retr0spect.quit.social.media.addiction;
 
+import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
+import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,19 +26,25 @@ public class ProfileListAdapter extends RecyclerView.Adapter<ProfileListAdapter.
 
     ProfileListAdapter(List<ProfileContentsFull> pcf) {
         this.pcf = pcf;
-        Log.d("Aditya", "Inside Constructor");
     }
 
     @Override
     public ProfileListAdapter.ProfileViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        Log.d("Aditya", "Inside onCreateViewHolder");
         View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.card_view_main_page, parent, false);
         return new ProfileViewHolder(v);
     }
 
     @Override
-    public void onBindViewHolder(ProfileListAdapter.ProfileViewHolder holder, int position) {
-        Log.d("Aditya", "Inside onBindViewHolder");
+    public void onBindViewHolder(final ProfileListAdapter.ProfileViewHolder holder, final int position) {
+        holder.cardView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(new Intent(v.getContext(), CreateProfileActivity.class));
+                intent.putExtra("ProfileName", pcf.get(position).getProfileName());
+                intent.putExtra("FromCard", "true");
+                v.getContext().startActivity(intent);
+            }
+        });
         holder.profileName.setText(pcf.get(position).getProfileName());
         for (ApplicationInfo ai : pcf.get(position).getPackageInfos()) {
             try {
@@ -58,13 +65,14 @@ public class ProfileListAdapter extends RecyclerView.Adapter<ProfileListAdapter.
 
 
     public static class ProfileViewHolder extends RecyclerView.ViewHolder {
+        public CardView cardView;
         public TextView profileName;
         public LinearLayout linearLayout;
 //        public ToggleButton toggle;
 
         public ProfileViewHolder(View itemView) {
             super(itemView);
-            Log.d("Aditya", "Inside ProfileViewHolder");
+            cardView = (CardView) itemView.findViewById(R.id.main_card_view);
             profileName = (TextView) itemView.findViewById(R.id.profile_name);
             linearLayout = (LinearLayout) itemView.findViewById(R.id.profile_app_icons);
 //            toggle = (ToggleButton) itemView.findViewById(R.id.main_page_toggle);

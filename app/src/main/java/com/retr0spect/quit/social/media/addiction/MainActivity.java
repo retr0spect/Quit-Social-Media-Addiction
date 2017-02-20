@@ -7,11 +7,11 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -24,18 +24,12 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.List;
 
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
-    boolean firatRun;
     SharedPreferences sharedPrefs;
     RecyclerView mRecyclerView;
     ProfileListAdapter adapter;
@@ -44,44 +38,8 @@ public class MainActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        sharedPrefs = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
-        String firstRun = sharedPrefs.getString("first_run", null);
-        SharedPreferences.Editor prefsEditor = sharedPrefs.edit();
-        if (firstRun == null) {
-            prefsEditor.putString("first_run", "true");
-            prefsEditor.apply();
-            firstRun();
-        } else if (firstRun.equals("true")) {
-            prefsEditor.putString("first_run", "false");
-            prefsEditor.apply();
-            firstRun();
-        }
 
-        Gson gson = new Gson();
-        String json = sharedPrefs.getString("profiles", null);
-        Type type = new TypeToken<ArrayList<ProfileContents>>() {
-        }.getType();
-        ArrayList<ProfileContents> pcs = gson.fromJson(json, type);
-
-        ArrayList<ProfileContentsFull> pcf = new ArrayList<>();
-        if (pcs != null) {
-            for (ProfileContents p : pcs) {
-                ArrayList<String> pNames = p.getPackageNames();
-                ArrayList<ApplicationInfo> appInfos = new ArrayList<>();
-                for (String pName : pNames) {
-                    try {
-                        appInfos.add(this.getPackageManager().getApplicationInfo(pName, 0));
-                    } catch (PackageManager.NameNotFoundException e) {
-                        Toast toast = Toast.makeText(this, "error in getting icon", Toast.LENGTH_SHORT);
-                        toast.show();
-                        e.printStackTrace();
-                    }
-                }
-                pcf.add(new ProfileContentsFull(p.getProfileName(), appInfos, p.getDays(), p.isActive()));
-            }
-        }
-
-        LayoutInflater inflater = LayoutInflater.from(this);
+        final LayoutInflater inflater = LayoutInflater.from(this);
         View rootView = inflater.inflate(R.layout.activity_main, null);
         mRecyclerView = (RecyclerView) rootView.findViewById(R.id.main_page_recycler_view);
         mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -89,27 +47,32 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        adapter = new ProfileListAdapter(pcf);
-        mRecyclerView.setAdapter(adapter);
+
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 AlertDialog.Builder alert = new AlertDialog.Builder(MainActivity.this);
-                alert.setTitle("Create Profile");
+                alert.setTitle("Create New Profile");
                 final EditText input = new EditText(MainActivity.this);
+                input.setHint("Profile Name");
                 alert.setView(input);
                 alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         Intent intent = new Intent(MainActivity.this, CreateProfileActivity.class);
                         String profileName = input.getText().toString().trim();
-                        if (profileName.equals("")) {
-                            Toast.makeText(MainActivity.this, "Profile Name cannot be empty", Toast.LENGTH_SHORT).show();
+                        boolean exists = checkIfProfileNameExists(profileName);
+                        if (exists) {
+                            Toast.makeText(MainActivity.this, "This Profile Name already exists. Choose another name.", Toast.LENGTH_LONG).show();
                         } else {
-                            intent.putExtra("ProfileName", profileName);
-                            startActivity(intent);
+                            if (profileName.equals("")) {
+                                Toast.makeText(MainActivity.this, "Profile Name cannot be empty", Toast.LENGTH_LONG).show();
+                            } else {
+                                intent.putExtra("ProfileName", profileName);
+                                startActivity(intent);
+                            }
                         }
                     }
                 });
@@ -123,16 +86,77 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
-        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        /*DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.setDrawerListener(toggle);
         toggle.syncState();
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener(this);
+        navigationView.setNavigationItemSelectedListener(this);*/
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        sharedPrefs = PreferenceManager.getDefaultSharedPreferences(MainActivity.this);
+        checkForFirstRun(sharedPrefs);
+
+        ArrayList<ProfileContentsFull> pcf = getProfileContentsFullFromProfileContents(
+                Utils.getProfilesFromSharedPrefs(sharedPrefs));
+        adapter = new ProfileListAdapter(pcf);
+        mRecyclerView.setAdapter(adapter);
+    }
+
+    private boolean checkIfProfileNameExists(String profileName) {
+        ArrayList<ProfileContents> pcs = Utils.getProfilesFromSharedPrefs(sharedPrefs);
+        if (pcs != null) {
+            for (ProfileContents pc : pcs) {
+                if (pc.getProfileName().equalsIgnoreCase(profileName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void checkForFirstRun(SharedPreferences sharedPrefs) {
+        String firstRun = sharedPrefs.getString("first_run", null);
+        SharedPreferences.Editor prefsEditor = sharedPrefs.edit();
+        if (firstRun == null) {
+            prefsEditor.putString("first_run", "true");
+            prefsEditor.apply();
+            firstRun();
+        } else if (firstRun.equals("true")) {
+            prefsEditor.putString("first_run", "false");
+            prefsEditor.apply();
+            firstRun();
+        }
+    }
+
+
+    @NonNull
+    private ArrayList<ProfileContentsFull> getProfileContentsFullFromProfileContents(ArrayList<ProfileContents> pcs) {
+        ArrayList<ProfileContentsFull> pcf = new ArrayList<>();
+        if (pcs != null) {
+            for (ProfileContents p : pcs) {
+                ArrayList<String> pNames = p.getPackageNames();
+                ArrayList<ApplicationInfo> appInfos = new ArrayList<>();
+                for (String pName : pNames) {
+                    try {
+                        appInfos.add(this.getPackageManager().getApplicationInfo(pName, 0));
+                    } catch (PackageManager.NameNotFoundException e) {
+                        Toast toast = Toast.makeText(this, "Error in getting icon", Toast.LENGTH_SHORT);
+                        toast.show();
+                        e.printStackTrace();
+                    }
+                }
+                pcf.add(new ProfileContentsFull(p.getProfileName(), appInfos, p.getDays(), p.isActive()));
+            }
+        }
+        return pcf;
+    }
 
     private void firstRun() {
         String[] weekendPackages = new String[]{
@@ -146,14 +170,14 @@ public class MainActivity extends AppCompatActivity
 
         ArrayList<String> weekendPackagesExist = new ArrayList<>();
         for (String pack : weekendPackages) {
-            if (doesPackageExist(pack)) {
+            if (Utils.doesPackageExist(pack, MainActivity.this)) {
                 weekendPackagesExist.add(pack);
             }
         }
 
         ArrayList<String> socialMediaPackagesExist = new ArrayList<>();
         for (String pack : socialMediaPackages) {
-            if (doesPackageExist(pack)) {
+            if (Utils.doesPackageExist(pack, MainActivity.this)) {
                 socialMediaPackagesExist.add(pack);
             }
         }
@@ -167,11 +191,7 @@ public class MainActivity extends AppCompatActivity
             pcs.add(new ProfileContents("Social Media", socialMediaPackagesExist));
         }
 
-        SharedPreferences.Editor prefsEditor = sharedPrefs.edit();
-        Gson gson = new Gson();
-        String json = gson.toJson(pcs);
-        prefsEditor.putString("profiles", json);
-        prefsEditor.apply();
+        Utils.saveProfilesToSharedPrefs(pcs, sharedPrefs);
     }
 
 
@@ -231,17 +251,4 @@ public class MainActivity extends AppCompatActivity
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
-
-    public boolean doesPackageExist(String targetPackage) {
-        List<ApplicationInfo> packages;
-        PackageManager pm;
-        pm = getPackageManager();
-        packages = pm.getInstalledApplications(0);
-        for (ApplicationInfo packageInfo : packages) {
-            if (packageInfo.packageName.equals(targetPackage))
-                return true;
-        }
-        return false;
-    }
-
 }
